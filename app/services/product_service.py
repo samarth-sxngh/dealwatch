@@ -1,8 +1,10 @@
 """Product service for identifying, extracting, and normalizing products across retailers."""
 
 import logging
+import re
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,9 +82,45 @@ class ProductService:
         canonical_url = canonicalize_url(source_url)
         market_info = detect_market_from_domain(canonical_url)
 
+        # Extract slug keywords from source URL in case direct extraction fails or hits bot check
+        parsed_orig = urlparse(source_url)
+        slug_match = re.search(r"/([^/]+)/(?:dp|p|gp/product)/", parsed_orig.path)
+        raw_slug = slug_match.group(1) if slug_match else parsed_orig.path
+        cleaned_slug = re.sub(r"[/_-]+", " ", raw_slug).strip()
+        slug_words = [w for w in cleaned_slug.split() if len(w) > 1 and not w.isdigit()]
+        fallback_query = " ".join(slug_words)
+
+        generic_placeholders = {
+            "amazon",
+            "amazon.in",
+            "amazon.com",
+            "croma",
+            "flipkart",
+            "robot check",
+            "access denied",
+            "page not found",
+            "404 not found",
+            "online shopping",
+            "just a moment...",
+        }
+
         # 1. Fetch page safely with SSRF protections
         fetch_res = await fetcher.fetch(canonical_url)
         if not fetch_res.is_success:
+            if len(slug_words) >= 2:
+                logger.info(
+                    "Direct fetch failed (%s); falling back to URL slug: %s",
+                    fetch_res.error_message,
+                    fallback_query,
+                )
+                query_res = await self._identify_from_query(fallback_query)
+                if market_info.country:
+                    query_res["market_country"] = market_info.country
+                    query_res["currency"] = market_info.currency
+                    query_res["market_confidence"] = "high"
+                    query_res["clarification_prompt"] = None
+                query_res["source_url"] = canonical_url
+                return query_res
             raise ValueError(f"Failed to fetch product page: {fetch_res.error_message}")
 
         # 2. Extract structured data via retailer adapter or JSON-LD
@@ -91,6 +129,24 @@ class ProductService:
 
         if not extracted:
             extracted = extractor.extract(fetch_res.content, base_url=canonical_url)
+
+        # 2b. If extracted title is empty or generic bot page, fall back to URL slug
+        if (
+            not extracted
+            or not extracted.title
+            or extracted.title.lower().strip() in generic_placeholders
+        ) and len(slug_words) >= 2:
+            logger.info(
+                "Extracted title is generic/empty; falling back to URL slug: %s", fallback_query
+            )
+            query_res = await self._identify_from_query(fallback_query)
+            if market_info.country:
+                query_res["market_country"] = market_info.country
+                query_res["currency"] = market_info.currency
+                query_res["market_confidence"] = "high"
+                query_res["clarification_prompt"] = None
+            query_res["source_url"] = canonical_url
+            return query_res
 
         # 3. Fallback to LLM if structured extraction missed key details
         if (not extracted or not extracted.title) and llm_provider.has_quota():

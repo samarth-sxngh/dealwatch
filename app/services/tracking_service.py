@@ -44,7 +44,7 @@ class TrackingService:
         self,
         user_id: uuid.UUID | str,
         subject_id: uuid.UUID | str,
-        offer_ids: list[uuid.UUID | str],
+        offer_ids: list[uuid.UUID | str] | None = None,
         target_price: Decimal | float | None = None,
         target_currency: str | None = None,
         price_drop_alert: bool = True,
@@ -79,10 +79,14 @@ class TrackingService:
             price_drop_alert=price_drop_alert,
         )
 
-        # 4. Attach tracked offers
-        clean_offer_ids = [
-            uuid.UUID(str(oid)) if isinstance(oid, str) else oid for oid in offer_ids
-        ]
+        # 4. Attach tracked offers (default to all known verified offers for subject if omitted)
+        if not offer_ids and subject.offers:
+            clean_offer_ids = [o.id for o in subject.offers]
+        else:
+            clean_offer_ids = [
+                uuid.UUID(str(oid)) if isinstance(oid, str) else oid for oid in (offer_ids or [])
+            ]
+
         if clean_offer_ids:
             await self.tracker_repo.attach_offers_to_tracker(
                 tracker_id=tracker.id,

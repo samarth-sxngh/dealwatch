@@ -186,7 +186,7 @@ async def submit_offer_url(
 
 async def track_subject(
     subject_id: str,
-    offer_ids: list[str],
+    offer_ids: list[str] | None = None,
     vertical: str = "products",
     target_price: float | None = None,
     target_currency: str | None = None,

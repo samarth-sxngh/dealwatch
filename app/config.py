@@ -1,14 +1,15 @@
-"""DealWatch Configuration Module."""
-
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_ENV_FILE_PATH = Path(__file__).resolve().parent.parent / ".env"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE_PATH if _ENV_FILE_PATH.exists() else ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
