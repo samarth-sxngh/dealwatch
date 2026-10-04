@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import app.verticals.products
 from app.api.routes.health import router as health_router
+from app.api.routes.notifications import router as notifications_router
 from app.api.routes.oauth import router as oauth_router
 from app.auth.middleware import OAuth2Middleware
 from app.config import settings
@@ -90,6 +91,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
 # Include route modules
 app.include_router(health_router)
 app.include_router(oauth_router)
+app.include_router(notifications_router)
 
 # Mount MCP Streamable HTTP transport at /mcp
 mcp_app = create_mcp_app()

@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -11,6 +12,39 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
+
+
+@pytest.fixture(autouse=True)
+def configure_test_settings():
+    """Guarantees safe defaults across test suites regardless of local .env contents."""
+    prev_env = settings.ENVIRONMENT
+    prev_auth = settings.AUTH_REQUIRED
+    prev_iss = settings.AUTH_ISSUER
+    prev_aud = settings.AUTH_AUDIENCE
+    prev_jwks = settings.AUTH_JWKS_URL
+    prev_secret = settings.AUTH_TEST_SECRET
+    prev_brevo = settings.BREVO_API_KEY
+    prev_sender = settings.BREVO_SENDER_EMAIL
+
+    settings.ENVIRONMENT = "test"
+    settings.AUTH_REQUIRED = False
+    settings.AUTH_ISSUER = None
+    settings.AUTH_AUDIENCE = None
+    settings.AUTH_JWKS_URL = None
+    settings.AUTH_TEST_SECRET = None
+    settings.BREVO_API_KEY = None
+    settings.BREVO_SENDER_EMAIL = "alerts@dealwatch.local"
+
+    yield
+
+    settings.ENVIRONMENT = prev_env
+    settings.AUTH_REQUIRED = prev_auth
+    settings.AUTH_ISSUER = prev_iss
+    settings.AUTH_AUDIENCE = prev_aud
+    settings.AUTH_JWKS_URL = prev_jwks
+    settings.AUTH_TEST_SECRET = prev_secret
+    settings.BREVO_API_KEY = prev_brevo
+    settings.BREVO_SENDER_EMAIL = prev_sender
 
 
 @pytest_asyncio.fixture

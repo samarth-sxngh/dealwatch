@@ -23,6 +23,7 @@ from app.providers.extractor import extractor
 from app.providers.fetcher import fetcher
 from app.providers.retailers.registry import retailer_registry
 from app.repositories.tracker_repository import TrackerRepository
+from app.services.email_dispatcher import EmailDispatcherService
 from app.services.notification_service import BaseNotifier, NotificationService
 from app.services.price_service import PriceService
 
@@ -150,7 +151,12 @@ class PriceCheckerWorker:
 
         return {"status": "success", "alerts_queued": len(alerts)}
 
-    async def run(self, lease_seconds: int = 600, batch_size: int = 50) -> dict[str, Any]:
+    async def run(
+        self,
+        lease_seconds: int = 600,
+        batch_size: int = 50,
+        dispatch_emails: bool = False,
+    ) -> dict[str, Any]:
         """Runs one full scheduled checking cycle over due and expired trackers."""
         logger.info("Starting PriceCheckerWorker execution cycle...")
         summary = {
@@ -159,6 +165,8 @@ class PriceCheckerWorker:
             "checked_offers": 0,
             "alerts_queued": 0,
             "failed_offers": 0,
+            "emails_dispatched": 0,
+            "emails_failed": 0,
         }
 
         # 1. Process 14-day tracking expirations
@@ -217,12 +225,23 @@ class PriceCheckerWorker:
                     last_checked_at=datetime.now(UTC),
                 )
 
+        # 4. Dispatch generated email alerts via Brevo if enabled
+        if dispatch_emails and summary["alerts_queued"] > 0:
+            try:
+                dispatcher = EmailDispatcherService(self.session)
+                dispatch_res = await dispatcher.dispatch_pending()
+                summary["emails_dispatched"] = dispatch_res.get("sent", 0)
+                summary["emails_failed"] = dispatch_res.get("failed", 0)
+            except Exception as mail_err:  # noqa: BLE001
+                logger.error("Failed dispatching alert emails: %s", mail_err)
+
         logger.info(
-            "PriceCheckerWorker cycle finished: checked %d trackers, %d offers (%d failed), %d alerts queued.",
+            "PriceCheckerWorker cycle finished: checked %d trackers, %d offers (%d failed), %d alerts queued, %d emails sent.",
             summary["checked_trackers"],
             summary["checked_offers"],
             summary["failed_offers"],
             summary["alerts_queued"],
+            summary["emails_dispatched"],
         )
         return summary
 
