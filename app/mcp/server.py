@@ -3,6 +3,8 @@
 Uses official Python MCP SDK with Streamable HTTP transport at /mcp.
 """
 
+from pathlib import Path
+
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
@@ -72,6 +74,22 @@ mcp_server.tool(
     name="compare_quotes",
     description="Compares point-in-time quotes for travel or on-demand services (Section 10B).",
 )(tools.compare_quotes)
+
+# Register UI Resource for ChatGPT Apps SDK
+WIDGET_PATH = Path(__file__).parent.parent / "ui" / "dealwatch_widget.html"
+
+
+@mcp_server.resource(
+    "ui://dealwatch/widget.html",
+    name="DealWatchWidget",
+    description="Interactive ChatGPT App Card Widget for deal discovery and 14-day price tracking",
+    mime_type="text/html",
+)
+async def get_dealwatch_widget() -> str:
+    """Returns the self-contained DealWatch interactive card widget HTML."""
+    if WIDGET_PATH.exists():
+        return WIDGET_PATH.read_text(encoding="utf-8")
+    return "<html><body><h3>DealWatch Widget</h3><p>Widget template not found.</p></body></html>"
 
 
 def create_mcp_app() -> Starlette:

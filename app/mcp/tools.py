@@ -29,6 +29,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_UNAUTHENTICATED_USER_SUB = "local-mcp-user"
 _CACHED_DEMO_USER_ID: uuid.UUID | None = None
 
+# ChatGPT Apps SDK UI Resource metadata for interactive card widget
+CHATGPT_WIDGET_META: dict[str, Any] = {
+    "openai/outputTemplate": "ui://dealwatch/widget.html",
+}
+
 
 async def get_or_create_default_user_id() -> uuid.UUID:
     """Helper to ensure a local/demo user exists for unauthenticated MCP testing."""
@@ -138,7 +143,7 @@ async def find_offers(
                 currency=currency,
             )
             await session.commit()
-            return {"status": "success", **result}
+            return {"status": "success", "_meta": CHATGPT_WIDGET_META, **result}
         except Exception as e:
             await session.rollback()
             logger.exception("find_offers failed")
@@ -223,7 +228,7 @@ async def track_subject(
                 duration_days=duration_days,
             )
             await session.commit()
-            return {"status": "success", **result}
+            return {"status": "success", "_meta": CHATGPT_WIDGET_META, **result}
         except QuotaExceededError as qe:
             await session.rollback()
             return {
@@ -268,7 +273,7 @@ async def update_tracker(
                 price_drop_alert=price_drop_alert,
             )
             await session.commit()
-            return {"status": "success", **result}
+            return {"status": "success", "_meta": CHATGPT_WIDGET_META, **result}
         except TrackerNotFoundError as tne:
             await session.rollback()
             return {"status": "not_found", "message": str(tne)}
@@ -297,7 +302,7 @@ async def stop_tracking(tracker_id: str) -> dict[str, Any]:
             service = TrackingService(session)
             result = await service.stop_tracking(user_id=user_id, tracker_id=tracker_id)
             await session.commit()
-            return {"status": "success", **result}
+            return {"status": "success", "_meta": CHATGPT_WIDGET_META, **result}
         except TrackerNotFoundError as tne:
             await session.rollback()
             return {"status": "not_found", "message": str(tne)}
@@ -327,7 +332,7 @@ async def get_tracking_status(tracker_id: str) -> dict[str, Any]:
             service = TrackingService(session)
             result = await service.get_tracking_status(user_id=user_id, tracker_id=tracker_id)
             await session.commit()
-            return {"status": "success", **result}
+            return {"status": "success", "_meta": CHATGPT_WIDGET_META, **result}
         except TrackerNotFoundError as tne:
             await session.rollback()
             return {"status": "not_found", "message": str(tne)}

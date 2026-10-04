@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DealWatch Price Tracker</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.85);
+      --bg-surface: #1e293b;
+      --bg-hover: #334155;
+      --border: rgba(148, 163, 184, 0.15);
+      --border-accent: rgba(99, 102, 241, 0.4);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --emerald-border: rgba(16, 185, 129, 0.3);
+      --rose: #ef4444;
+      --rose-bg: rgba(239, 68, 68, 0.12);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #f8fafc;
+        --bg-card: #ffffff;
+        --bg-surface: #f1f5f9;
+        --bg-hover: #e2e8f0;
+        --border: #e2e8f0;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      line-height: 1.5;
+    }
+
+    .dealwatch-card {
+      width: 100%;
+      max-width: 580px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    /* Header */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .product-title-wrap {
+      flex: 1;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .badge.verified {
+      background: var(--emerald-bg);
+      color: var(--emerald);
+      border-color: var(--emerald-border);
+    }
+
+    .badge.active-track {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border-color: var(--border-accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .product-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .product-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Hero Price Section */
+    .hero-price-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hero-price-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .hero-price-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--emerald);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+
+    .hero-retailer {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .hero-retailer strong {
+      color: var(--text-main);
+    }
+
+    /* Sparkline Chart */
+    .sparkline-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+    }
+
+    .sparkline-svg {
+      width: 120px;
+      height: 38px;
+      stroke: var(--emerald);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .sparkline-label {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Offers Table */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .offers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .offer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      transition: background 0.15s ease;
+    }
+
+    .offer-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .offer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .offer-retailer-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .offer-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .stock-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--emerald);
+    }
+
+    .stock-badge.out-of-stock {
+      color: var(--rose);
+    }
+
+    .offer-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .offer-price {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-main);
+    }
+
+    .btn-visit {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-hover);
+      color: var(--text-main);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.15s;
+    }
+
+    .btn-visit:hover {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    /* Tracking Control Panel */
+    .tracking-panel {
+      background: rgba(99, 102, 241, 0.05);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tracking-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .tracking-timer {
+      color: #818cf8;
+      font-weight: 600;
+    }
+
+    .tracking-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .target-input-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .currency-symbol {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-right: 6px;
+      font-weight: 600;
+    }
+
+    .target-input {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 600;
+      width: 100%;
+      outline: none;
+    }
+
+    .btn {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-danger {
+      background: var(--rose-bg);
+      color: var(--rose);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: var(--rose);
+      color: #ffffff;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    /* Status & Alerts */
+    .status-banner {
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      display: none;
+    }
+
+    .status-banner.error {
+      display: block;
+      background: var(--rose-bg);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-banner.info {
+      display: block;
+      background: rgba(99, 102, 241, 0.1);
+      color: #c7d2fe;
+      border: 1px solid var(--border-accent);
+    }
+
+    /* Uncertain Offers Drawer */
+    .uncertain-section {
+      border-top: 1px dashed var(--border);
+      padding-top: 12px;
+      margin-top: 4px;
+    }
+
+    .uncertain-toggle {
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .uncertain-list {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .uncertain-list.open {
+      display: flex;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn.loading .spinner {
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="dealwatch-card" id="widgetCard">
+  <!-- Card Header -->
+  <div class="card-header">
+    <div class="product-title-wrap">
+      <div class="badge-row">
+        <span class="badge verified">Verified Exact</span>
+        <span class="badge active-track" id="activeTrackBadge" style="display: none;">
+          <span style="display:inline-block; width:6px; height:6px; background:#818cf8; border-radius:50%;"></span>
+          14-Day Tracking Active
+        </span>
+      </div>
+      <h1 class="product-title" id="productTitle">Loading Product...</h1>
+      <p class="product-sub" id="productSub">Detecting market prices...</p>
+    </div>
+  </div>
+
+  <!-- Hero Lowest Price Section -->
+  <div class="hero-price-section">
+    <div>
+      <span class="hero-price-label">Lowest Verified Deal</span>
+      <div class="hero-price-val" id="heroPrice">--</div>
+      <div class="hero-retailer" id="heroRetailer">Best store: <strong>--</strong></div>
+    </div>
+    <div class="sparkline-container">
+      <svg class="sparkline-svg" id="sparklineSvg" viewBox="0 0 100 30" preserveAspectRatio="none">
+        <path d="M 0,20 L 30,18 L 60,22 L 100,8" />
+      </svg>
+      <span class="sparkline-label" id="sparklineLabel">Price Trend</span>
+    </div>
+  </div>
+
+  <!-- Status / Error Notification Banner -->
+  <div class="status-banner" id="statusBanner"></div>
+
+  <!-- Verified Offers List -->
+  <div>
+    <h2 class="section-title">Store Comparison</h2>
+    <div class="offers-list" id="offersList">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+
+  <!-- 14-Day Tracking Control Panel -->
+  <div class="tracking-panel" id="trackingPanel">
+    <div class="tracking-status-bar">
+      <span><strong>14-Day Price Drop Watch</strong></span>
+      <span class="tracking-timer" id="trackerCountdown">Not Monitored</span>
+    </div>
+
+    <div class="tracking-controls">
+      <div class="target-input-wrap">
+        <span class="currency-symbol" id="inputCurrency">₹</span>
+        <input type="number" class="target-input" id="targetPriceInput" placeholder="Target price (optional)" />
+      </div>
+
+      <button class="btn btn-primary" id="btnTrack" onclick="handleTrackClick()">
+        <span class="spinner"></span>
+        <span id="btnTrackText">Track Price</span>
+      </button>
+
+      <button class="btn btn-danger" id="btnStop" style="display: none;" onclick="handleStopClick()">
+        <span class="spinner"></span>
+        <span>Stop Tracking</span>
+      </button>
+    </div>
+
+    <label class="toggle-row">
+      <input type="checkbox" id="chkPriceDrop" checked />
+      <span>Alert me on any price drop via Brevo email</span>
+    </label>
+  </div>
+
+  <!-- Isolated Uncertain Offers Drawer -->
+  <div class="uncertain-section" id="uncertainSection" style="display: none;">
+    <div class="uncertain-toggle" onclick="toggleUncertain()">
+      <span id="uncertainCountLabel">⚠ 1 unverified store offer isolated</span>
+      <span id="uncertainToggleIcon">▼</span>
+    </div>
+    <div class="uncertain-list" id="uncertainList">
+      <!-- Isolated offers rendered here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  // State
+  let currentData = null;
+  let isTracking = false;
+  let trackerId = null;
+
+  // Format currency
+  function formatMoney(amount, currency) {
+    if (amount === null || amount === undefined) return "--";
+    try {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: currency || 'INR',
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch (e) {
+      return `${currency || ''} ${amount}`;
+    }
+  }
+
+  // Render widget from tool data
+  function render(data) {
+    if (!data) return;
+    currentData = data;
+
+    // Product Title
+    document.getElementById('productTitle').textContent = data.product_title || data.title || "Product Deals";
+    const brandModel = [data.brand, data.model].filter(Boolean).join(" • ");
+    document.getElementById('productSub').textContent = brandModel || (data.market_country ? `Market: ${data.market_country}` : "");
+
+    // Lowest Price
+    const currency = data.currency || (data.verified_offers && data.verified_offers[0]?.currency) || "INR";
+    document.getElementById('inputCurrency').textContent = currency === 'INR' ? '₹' : (currency === 'USD' ? '$' : currency);
+
+    const lowest = data.lowest_verified_price;
+    document.getElementById('heroPrice').textContent = formatMoney(lowest, currency);
+    document.getElementById('heroRetailer').innerHTML = `Best store: <strong>${data.lowest_verified_retailer || "Verified Store"}</strong>`;
+
+    // Verified Offers
+    const offersContainer = document.getElementById('offersList');
+    offersContainer.innerHTML = '';
+    const verified = data.verified_offers || [];
+
+    if (verified.length === 0) {
+      offersContainer.innerHTML = '<div style="font-size:13px; color:var(--text-muted); padding:8px;">No competitor stores observed yet.</div>';
+    } else {
+      verified.forEach(offer => {
+        const item = document.createElement('div');
+        item.className = 'offer-item';
+        const inStock = offer.availability !== 'out_of_stock';
+        item.innerHTML = `
+          <div class="offer-left">
+            <span class="offer-retailer-name">${offer.retailer || offer.source_name || "Online Store"}</span>
+            <div class="offer-meta">
+              <span class="stock-badge ${inStock ? '' : 'out-of-stock'}">${inStock ? '● In Stock' : '○ Out of Stock'}</span>
+              <span>${offer.domain || ''}</span>
+            </div>
+          </div>
+          <div class="offer-right">
+            <span class="offer-price">${formatMoney(offer.total_price, offer.currency || currency)}</span>
+            ${offer.url ? `<a href="${offer.url}" target="_blank" rel="noopener noreferrer" class="btn-visit">View Deal</a>` : ''}
+          </div>
+        `;
+        offersContainer.appendChild(item);
+      });
+    }
+
+    // Uncertain Offers
+    const uncertain = data.uncertain_offers || [];
+    const uncertainSection = document.getElementById('uncertainSection');
+    if (uncertain.length > 0) {
+      uncertainSection.style.display = 'block';
+      document.getElementById('uncertainCountLabel').textContent = `⚠ ${uncertain.length} uncertain/unverified store ${uncertain.length === 1 ? 'offer' : 'offers'} isolated`;
+      const unList = document.getElementById('uncertainList');
+      unList.innerHTML = '';
+      uncertain.forEach(u => {
+        const uItem = document.createElement('div');
+        uItem.className = 'offer-item';
+        uItem.style.opacity = '0.75';
+        uItem.innerHTML = `
+          <div class="offer-left">
+            <span class="offer-retailer-name">${u.retailer || "Uncertain Retailer"}</span>
+            <span style="font-size:11px; color:var(--amber);">${(u.match_reasons || []).join(", ") || "Variant mismatch"}</span>
+          </div>
+          <div class="offer-right">
+            <span class="offer-price">${formatMoney(u.total_price, u.currency || currency)}</span>
+          </div>
+        `;
+        unList.appendChild(uItem);
+      });
+    } else {
+      uncertainSection.style.display = 'none';
+    }
+
+    // Tracking state
+    if (data.tracker || data.tracker_id || isTracking) {
+      setTrackingState(true, data.tracker_id || trackerId, data.tracker);
+    } else {
+      setTrackingState(false);
+    }
+  }
+
+  function toggleUncertain() {
+    const list = document.getElementById('uncertainList');
+    list.classList.toggle('open');
+    document.getElementById('uncertainToggleIcon').textContent = list.classList.contains('open') ? '▲' : '▼';
+  }
+
+  function setTrackingState(active, id, trackerInfo) {
+    isTracking = active;
+    trackerId = id || trackerId;
+    const badge = document.getElementById('activeTrackBadge');
+    const btnTrack = document.getElementById('btnTrack');
+    const btnStop = document.getElementById('btnStop');
+    const countdown = document.getElementById('trackerCountdown');
+
+    if (active) {
+      badge.style.display = 'inline-flex';
+      btnTrack.style.display = 'none';
+      btnStop.style.display = 'inline-flex';
+      const days = trackerInfo?.days_remaining ?? 14;
+      countdown.textContent = `Active • Expires in ${days} days`;
+      countdown.style.color = '#10b981';
+      if (trackerInfo?.target_price) {
+        document.getElementById('targetPriceInput').value = trackerInfo.target_price;
+      }
+    } else {
+      badge.style.display = 'none';
+      btnTrack.style.display = 'inline-flex';
+      btnStop.style.display = 'none';
+      countdown.textContent = 'Not Monitored';
+      countdown.style.color = '#94a3b8';
+    }
+  }
+
+  function showBanner(msg, type = 'info') {
+    const b = document.getElementById('statusBanner');
+    b.className = `status-banner ${type}`;
+    b.textContent = msg;
+    setTimeout(() => { b.style.display = 'none'; }, 6000);
+  }
+
+  // Handle Track Click
+  async function handleTrackClick() {
+    if (!currentData || !currentData.subject_id) {
+      showBanner("Subject ID missing from current deal data", "error");
+      return;
+    }
+
+    const btn = document.getElementById('btnTrack');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    const targetVal = document.getElementById('targetPriceInput').value;
+    const alertDrop = document.getElementById('chkPriceDrop').checked;
+    const offerIds = (currentData.verified_offers || []).map(o => o.offer_id).filter(Boolean);
+
+    const payload = {
+      subject_id: currentData.subject_id,
+      offer_ids: offerIds,
+      target_price: targetVal ? parseFloat(targetVal) : null,
+      price_drop_alert: alertDrop,
+      duration_days: 14
+    };
+
+    try {
+      if (window.openai && typeof window.openai.callTool === 'function') {
+        const res = await window.openai.callTool("track_subject", payload);
+        if (res.status === 'success' || res.status === 'active') {
+          setTrackingState(true, res.tracker_id, res);
+          showBanner("14-Day price tracking successfully activated!", "info");
+        } else if (res.status === 'quota_exceeded') {
+          showBanner(res.message || "Quota reached (5/5). Stop an existing tracker first.", "error");
+        } else {
+          showBanner(res.message || "Failed to start tracking", "error");
+        }
+      } else {
+        // Standalone preview simulation
+        await new Promise(r => setTimeout(r, 600));
+        setTrackingState(true, "simulated-tracker-id", { days_remaining: 14, target_price: targetVal });
+        showBanner("Simulation: 14-Day tracker activated!", "info");
+      }
+    } catch (err) {
+      showBanner(`Error: ${err.message}`, "error");
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // Handle Stop Click
+  async function handleStopClick() {
+    if (!trackerId) return;
+
+    const btn = document.getElementById('btnStop');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      if (window.openai && typeof window.openai.callTool === 'function') {
+        const res = await window.openai.callTool("stop_tracking", { tracker_id: trackerId });
+        if (res.status === 'stopped' || res.status === 'success') {
+          setTrackingState(false);
+          showBanner("Tracker stopped. Quota released.", "info");
+        } else {
+          showBanner(res.message || "Failed to stop tracker", "error");
+        }
+      } else {
+        await new Promise(r => setTimeout(r, 400));
+        setTrackingState(false);
+        showBanner("Simulation: Tracker stopped.", "info");
+      }
+    } catch (err) {
+      showBanner(`Error: ${err.message}`, "error");
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // Initialize from OpenAI bridge or fallback test payload
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.openai && window.openai.toolOutput) {
+      render(window.openai.toolOutput);
+    } else {
+      // Demo / standalone preview fallback
+      const mockPayload = {
+        subject_id: "demo-iphone-15",
+        product_title: "Apple iPhone 15 (128GB, Blue)",
+        brand: "Apple",
+        model: "iPhone 15",
+        lowest_verified_price: 71990.0,
+        lowest_verified_retailer: "Reliance Digital",
+        currency: "INR",
+        verified_offers: [
+          { offer_id: "off-1", retailer: "Reliance Digital", domain: "reliancedigital.in", total_price: 71990.0, currency: "INR", availability: "in_stock", url: "#" },
+          { offer_id: "off-2", retailer: "Amazon India", domain: "amazon.in", total_price: 74999.0, currency: "INR", availability: "in_stock", url: "#" },
+          { offer_id: "off-3", retailer: "Croma", domain: "croma.com", total_price: 75000.0, currency: "INR", availability: "in_stock", url: "#" }
+        ],
+        uncertain_offers: [
+          { retailer: "ThirdPartyStore", total_price: 59990.0, currency: "INR", match_reasons: ["Refurbished / Open Box detected"] }
+        ]
+      };
+      render(mockPayload);
+    }
+  });
+
+  // Listen for message events if hosted inside standard postMessage iframe
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.toolOutput) {
+      render(event.data.toolOutput);
+    }
+  });
+</script>
+
+</body>
+</html>
