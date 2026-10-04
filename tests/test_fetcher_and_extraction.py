@@ -151,3 +151,71 @@ async def test_firecrawl_credit_caps_and_refusal():
     assert res_blocked.is_success is False
     assert res_blocked.status_code == 429
     assert "credit cap reached" in res_blocked.error_message
+
+
+def test_extract_malformed_jsonld_with_extra_braces():
+    """Verifies that malformed JSON-LD (e.g. extra closing braces) is parsed leniently."""
+    malformed_html = """
+    <html>
+      <head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "Product",
+          "name": "Apple iPhone 15 (128GB, Black)",
+          "brand": {"@type": "Brand", "name": "Apple"},
+          "offers": {
+            "@type": "Offer",
+            "price": "59900.00",
+            "priceCurrency": "INR"
+          }
+        }}
+        </script>
+      </head>
+      <body><h1>Product</h1></body>
+    </html>
+    """
+    product = extractor.extract(malformed_html, base_url="https://croma.com")
+    assert product is not None
+    assert product.title == "Apple iPhone 15 (128GB, Black)"
+    assert product.brand == "Apple"
+    assert product.primary_offer is not None
+    assert product.primary_offer.total_price == Decimal("59900.00")
+    assert product.primary_offer.currency == "INR"
+
+
+@pytest.mark.asyncio
+async def test_fetcher_curl_fallback_on_403(monkeypatch):
+    """Verifies SafeFetcher falls back to system curl when httpx encounters 403 WAF block."""
+    from unittest.mock import AsyncMock
+
+    from app.providers.base import FetchResult
+
+    # Mock curl fallback returning 200
+    mock_curl_result = FetchResult(
+        url="https://www.croma.com/p/123",
+        status_code=200,
+        content="<html><body><title>Croma Product</title></body></html>",
+        content_type="text/html",
+        is_success=True,
+    )
+    monkeypatch.setattr(fetcher, "_fetch_via_curl", AsyncMock(return_value=mock_curl_result))
+
+    # Mock httpx returning 403
+    mock_response = AsyncMock()
+    mock_response.status_code = 403
+    mock_response.is_redirect = False
+    mock_response.headers = {}
+    mock_response.text = "Forbidden"
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    monkeypatch.setattr("httpx.AsyncClient", lambda **kwargs: mock_client)
+
+    result = await fetcher.fetch("https://www.croma.com/p/123")
+    assert result.is_success is True
+    assert result.status_code == 200
+    assert "Croma Product" in result.content

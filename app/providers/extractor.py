@@ -71,6 +71,12 @@ class StructuredExtractor:
 
         # Find Product nodes (flattening any @graph structures)
         product_node = self._find_product_node(json_ld_items)
+
+        # If extruct did not find product node or failed on malformed scripts, try lenient BS4 extraction
+        if not product_node:
+            lenient_items = self._extract_jsonld_lenient(html)
+            product_node = self._find_product_node(lenient_items)
+
         if product_node:
             extracted = self._parse_jsonld_product(product_node)
             if extracted:
@@ -86,6 +92,40 @@ class StructuredExtractor:
 
         # 3. Fallback: Parse OpenGraph / standard HTML meta tags via BeautifulSoup
         return self._parse_opengraph_fallback(html)
+
+    def _extract_jsonld_lenient(self, html: str) -> list[dict[str, Any]]:
+        """Resiliently parses <script type="application/ld+json"> directly with BS4."""
+        import json
+
+        soup = BeautifulSoup(html, "html.parser")
+        items: list[dict[str, Any]] = []
+        for s in soup.find_all("script", type="application/ld+json"):
+            raw = (s.string or s.text or "").strip()
+            if not raw:
+                continue
+            # Attempt 1: Direct lenient json load
+            try:
+                parsed = json.loads(raw, strict=False)
+                if isinstance(parsed, list):
+                    items.extend([p for p in parsed if isinstance(p, dict)])
+                elif isinstance(parsed, dict):
+                    items.append(parsed)
+                continue
+            except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                logger.debug("Lenient JSON-LD parse attempt 1 failed: %s", exc)
+
+            # Attempt 2: Clean trailing duplicate braces (e.g. Croma bug: '}}')
+            cleaned = re.sub(r"\}\s*\}\s*$", "}", raw)
+            try:
+                parsed = json.loads(cleaned, strict=False)
+                if isinstance(parsed, list):
+                    items.extend([p for p in parsed if isinstance(p, dict)])
+                elif isinstance(parsed, dict):
+                    items.append(parsed)
+                continue
+            except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                logger.debug("Lenient JSON-LD parse attempt 2 failed: %s", exc)
+        return items
 
     def _find_product_node(self, items: list[dict[str, Any]]) -> dict[str, Any] | None:
         """Recursively finds a schema.org Product or ProductModel node."""

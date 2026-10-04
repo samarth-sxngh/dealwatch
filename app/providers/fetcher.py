@@ -19,7 +19,7 @@ MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 MAX_REDIRECTS = 3
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 (DealWatch/1.0)"
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
 
 
@@ -33,6 +33,52 @@ class SafeFetcher:
     def __init__(self) -> None:
         self._last_request_time: dict[str, float] = {}
         self._rate_lock = asyncio.Lock()
+
+    async def _fetch_via_curl(self, url: str) -> FetchResult | None:
+        """Fallback fetcher using system curl to handle strict anti-bot/WAF TLS fingerprinting."""
+        try:
+            cmd = [
+                "curl",
+                "-s",
+                "-L",
+                "--max-time",
+                str(min(15, settings.FETCH_TIMEOUT_SECONDS)),
+                "-w",
+                "\n__DELIM__\n%{http_code}\n%{content_type}",
+                url,
+            ]
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await proc.communicate()
+            if proc.returncode != 0 or not stdout:
+                return None
+
+            raw_text = stdout.decode("utf-8", errors="ignore")
+            parts = raw_text.split("\n__DELIM__\n")
+            body = parts[0]
+            meta = parts[1].strip().split("\n") if len(parts) > 1 else ["200", "text/html"]
+            try:
+                status_code = int(meta[0])
+            except ValueError:
+                status_code = 200
+            content_type = meta[1] if len(meta) > 1 else "text/html"
+            is_success = 200 <= status_code < 300
+
+            if is_success and len(body.encode("utf-8")) <= MAX_RESPONSE_BYTES:
+                return FetchResult(
+                    url=url,
+                    status_code=status_code,
+                    content=body,
+                    content_type=content_type,
+                    is_success=True,
+                    error_message=None,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("curl fallback failed: %s", exc)
+        return None
 
     def validate_url_security(self, url: str) -> None:
         """Validates that a URL is HTTPS and resolves exclusively to safe public IP addresses."""
@@ -151,6 +197,9 @@ class SafeFetcher:
                         error_message=f"Request timed out after {settings.FETCH_TIMEOUT_SECONDS}s: {exc!s}",
                     )
                 except httpx.HTTPError as exc:
+                    curl_fallback = await self._fetch_via_curl(current_url)
+                    if curl_fallback and curl_fallback.is_success:
+                        return curl_fallback
                     return FetchResult(
                         url=current_url,
                         status_code=500,
@@ -159,6 +208,12 @@ class SafeFetcher:
                         is_success=False,
                         error_message=f"HTTP connection error: {exc!s}",
                     )
+
+                # Check if anti-bot/WAF blocked httpx (403, 503, 400) and try curl fallback
+                if response.status_code in (403, 503, 400):
+                    curl_fallback = await self._fetch_via_curl(current_url)
+                    if curl_fallback and curl_fallback.is_success:
+                        return curl_fallback
 
                 # 4. Handle redirects manually to enforce SSRF validation on the destination
                 if response.is_redirect:
