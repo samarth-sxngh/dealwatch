@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "dealwatch-remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://<your-render-subdomain>.onrender.com/mcp"
+      ]
+    },
+    "dealwatch-local": {
+      "command": "/Users/samarthsingh/Desktop/Programs/compare/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.mcp.stdio"
+      ],
+      "cwd": "/Users/samarthsingh/Desktop/Programs/compare",
+      "env": {
+        "PYTHONPATH": "/Users/samarthsingh/Desktop/Programs/compare"
+      }
+    }
+  }
+}
