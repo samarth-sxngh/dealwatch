@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: dealwatch
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_PORT
+        value: "8000"
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: BREVO_SENDER_NAME
+        value: DealWatch
+      - key: AUTH_REQUIRED
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: AUTH_JWKS_URL
+        sync: false
+      - key: AUTH_ISSUER
+        sync: false
+      - key: AUTH_AUDIENCE
+        sync: false

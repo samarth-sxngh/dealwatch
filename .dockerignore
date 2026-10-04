@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Python virtual environment & cache
+.venv
+venv
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Environment files & secrets (CRITICAL: never bake credentials into Docker image)
+.env
+.env.*
+!.env.example
+
+# Node / JS
+node_modules/
+package-lock.json
+package.json
+neon.ts
+
+# Tests & Documentation
+tests/
+docs/
+*.md
+!README.md
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+.agents/
+.neon/
