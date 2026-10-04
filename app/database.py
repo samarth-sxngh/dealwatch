@@ -8,16 +8,15 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
-# Create async engine with pooling suited for serverless Postgres
+# Create async engine with NullPool suited for serverless Postgres with PgBouncer
 engine: AsyncEngine = create_async_engine(
     settings.DATABASE_URL,
     echo=(settings.LOG_LEVEL.upper() == "DEBUG"),
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
+    poolclass=NullPool,
 )
 
 async_session_factory = async_sessionmaker(

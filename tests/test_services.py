@@ -150,7 +150,7 @@ async def test_deal_service_find_deals_ordering_and_separation(db_session: Async
 
     # Create Subject
     subject = await subject_repo.create_product_subject(
-        normalized_key="product:apple_iphone15_128gb",
+        normalized_key=f"product:apple_iphone15_128gb-{uuid.uuid4().hex[:6]}",
         title="Apple iPhone 15 128GB",
         brand="Apple",
         model="iPhone 15",
@@ -224,7 +224,7 @@ async def test_deal_service_submit_offer_url_exact_and_mismatch(db_session: Asyn
 
     # Existing Subject with GTIN
     subject = await subject_repo.create_product_subject(
-        normalized_key="gtin:0194253782910",
+        normalized_key=f"gtin:0194253782910-{uuid.uuid4().hex[:6]}",
         title="Apple iPhone 15 (128GB, Blue)",
         brand="Apple",
         model="iPhone 15",

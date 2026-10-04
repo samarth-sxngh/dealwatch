@@ -18,18 +18,18 @@ class TrackerRepository(BaseRepository[Tracker]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, Tracker)
 
-    async def get_user_tracker(self, user_id: uuid.UUID, tracker_id: uuid.UUID) -> Tracker | None:
+    async def get_user_tracker(
+        self, user_id: uuid.UUID, tracker_id: uuid.UUID, load_relations: bool = True
+    ) -> Tracker | None:
         """Retrieves a tracker enforcing strict tenant isolation on user_id."""
-        stmt = (
-            select(Tracker)
-            .options(
+        stmt = select(Tracker).where(Tracker.id == tracker_id, Tracker.user_id == user_id)
+        if load_relations:
+            stmt = stmt.options(
                 selectinload(Tracker.subject).selectinload(Subject.product_details),
                 selectinload(Tracker.tracked_offers)
                 .selectinload(TrackedOffer.offer)
                 .selectinload(Offer.source),
             )
-            .where(Tracker.id == tracker_id, Tracker.user_id == user_id)
-        )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

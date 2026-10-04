@@ -13,6 +13,7 @@ import app.verticals.products
 from app.api.routes.health import router as health_router
 from app.config import settings
 from app.logging_config import setup_logging
+from app.mcp import create_mcp_app, mcp_server
 
 logger = logging.getLogger("dealwatch")
 
@@ -25,7 +26,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Starting DealWatch API",
         extra={"extra_data": {"environment": settings.ENVIRONMENT, "port": settings.API_PORT}},
     )
-    yield
+    async with mcp_server.session_manager.run():
+        yield
     logger.info("Shutting down DealWatch API")
 
 
@@ -79,3 +81,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
 
 # Include route modules
 app.include_router(health_router)
+
+# Mount MCP Streamable HTTP transport at /mcp
+mcp_app = create_mcp_app()
+app.mount("/", mcp_app)

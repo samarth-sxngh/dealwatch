@@ -115,7 +115,7 @@ class TrackingService:
         uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
         tid = uuid.UUID(str(tracker_id)) if isinstance(tracker_id, str) else tracker_id
 
-        tracker = await self.tracker_repo.get_user_tracker(uid, tid)
+        tracker = await self.tracker_repo.get_user_tracker(uid, tid, load_relations=False)
         if not tracker:
             raise TrackerNotFoundError(f"Tracker '{tracker_id}' not found or access denied.")
 
@@ -145,7 +145,7 @@ class TrackingService:
         uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
         tid = uuid.UUID(str(tracker_id)) if isinstance(tracker_id, str) else tracker_id
 
-        tracker = await self.tracker_repo.get_user_tracker(uid, tid)
+        tracker = await self.tracker_repo.get_user_tracker(uid, tid, load_relations=False)
         if not tracker:
             raise TrackerNotFoundError(f"Tracker '{tracker_id}' not found or access denied.")
 

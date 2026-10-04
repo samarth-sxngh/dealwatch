@@ -86,6 +86,7 @@ class OfferRepository(BaseRepository[Offer]):
             self.session.add(offer)
         else:
             # Update latest observed pricing and availability
+            offer.subject_id = subject_id
             offer.currency = currency.upper()
             if price_status == "ok":
                 offer.base_price = base_price
