@@ -47,10 +47,26 @@ class Settings(BaseSettings):
     BREVO_SENDER_EMAIL: str | None = None
     BREVO_SENDER_NAME: str = "DealWatch"
 
-    # OAuth 2.1 (WorkOS / Stytch - Phase 8)
+    # OAuth 2.1 (RFC 9728 & RFC 8414 with Descope/WorkOS JWKS - Phase 8)
+    AUTH_REQUIRED: bool = Field(
+        default=False,
+        description="Whether Bearer authentication is strictly enforced on MCP endpoints",
+    )
     AUTH_JWKS_URL: str | None = None
     AUTH_ISSUER: str | None = None
     AUTH_AUDIENCE: str | None = None
+    AUTH_RESOURCE_ID: str = Field(
+        default="https://dealwatch.local/mcp",
+        description="Protected resource identifier for RFC 9728",
+    )
+    AUTH_SCOPES_SUPPORTED: list[str] = Field(
+        default_factory=lambda: ["dealwatch:read", "dealwatch:write"]
+    )
+    AUTH_RESOURCE_METADATA_URL: str = "/.well-known/oauth-protected-resource"
+    AUTH_TEST_SECRET: str | None = Field(
+        default=None,
+        description="Optional symmetric test secret for local test suites without remote JWKS",
+    )
 
 
 settings = Settings()

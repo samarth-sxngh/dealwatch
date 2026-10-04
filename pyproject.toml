@@ -22,6 +22,7 @@ dependencies = [
     "extruct>=0.17.0",
     "beautifulsoup4>=4.12.3",
     "python-dotenv>=1.0.1",
+    "pyjwt[crypto]>=2.9.0",
 ]
 
 [project.optional-dependencies]

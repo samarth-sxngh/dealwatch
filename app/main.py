@@ -11,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import app.verticals.products
 from app.api.routes.health import router as health_router
+from app.api.routes.oauth import router as oauth_router
+from app.auth.middleware import OAuth2Middleware
 from app.config import settings
 from app.logging_config import setup_logging
 from app.mcp import create_mcp_app, mcp_server
@@ -26,7 +28,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Starting DealWatch API",
         extra={"extra_data": {"environment": settings.ENVIRONMENT, "port": settings.API_PORT}},
     )
-    async with mcp_server.session_manager.run():
+    if not getattr(mcp_server.session_manager, "_has_started", False):
+        async with mcp_server.session_manager.run():
+            yield
+    else:
         yield
     logger.info("Shutting down DealWatch API")
 
@@ -37,6 +42,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# OAuth 2.1 authentication middleware for protected MCP endpoints
+app.add_middleware(OAuth2Middleware)
 
 # CORS configuration
 app.add_middleware(
@@ -81,6 +89,7 @@ async def request_logging_middleware(request: Request, call_next) -> Response:
 
 # Include route modules
 app.include_router(health_router)
+app.include_router(oauth_router)
 
 # Mount MCP Streamable HTTP transport at /mcp
 mcp_app = create_mcp_app()

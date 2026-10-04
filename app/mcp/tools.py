@@ -9,6 +9,8 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
+from app.auth.context import get_current_user_id
+from app.config import settings
 from app.database import async_session_factory
 from app.repositories.user_repository import UserRepository
 from app.services.deal_service import DealService
@@ -43,6 +45,18 @@ async def get_or_create_default_user_id() -> uuid.UUID:
         await session.commit()
         _CACHED_DEMO_USER_ID = user.id
         return _CACHED_DEMO_USER_ID
+
+
+async def resolve_effective_user_id() -> uuid.UUID:
+    """Resolves the current authenticated user ID from Bearer token context or fallback demo user."""
+    user_id = get_current_user_id()
+    if user_id is not None:
+        return user_id
+
+    if settings.AUTH_REQUIRED:
+        raise PermissionError("Authentication required. Please provide a valid Bearer token.")
+
+    return await get_or_create_default_user_id()
 
 
 async def identify_subject(
@@ -190,7 +204,10 @@ async def track_subject(
     Returns:
         Created Tracker details, expiration date, and tracking status.
     """
-    user_id = await get_or_create_default_user_id()
+    try:
+        user_id = await resolve_effective_user_id()
+    except PermissionError as e:
+        return {"status": "error", "error": "unauthorized", "message": str(e)}
 
     async with async_session_factory() as session:
         try:
@@ -235,7 +252,10 @@ async def update_tracker(
     Returns:
         Updated tracker settings.
     """
-    user_id = await get_or_create_default_user_id()
+    try:
+        user_id = await resolve_effective_user_id()
+    except PermissionError as e:
+        return {"status": "error", "error": "unauthorized", "message": str(e)}
 
     async with async_session_factory() as session:
         try:
@@ -267,7 +287,10 @@ async def stop_tracking(tracker_id: str) -> dict[str, Any]:
     Returns:
         Confirmation of stopped tracker status.
     """
-    user_id = await get_or_create_default_user_id()
+    try:
+        user_id = await resolve_effective_user_id()
+    except PermissionError as e:
+        return {"status": "error", "error": "unauthorized", "message": str(e)}
 
     async with async_session_factory() as session:
         try:
@@ -294,7 +317,10 @@ async def get_tracking_status(tracker_id: str) -> dict[str, Any]:
         Product title, tracker status (active/stopped/expired), expiration timestamp,
         target price, and monitored offers with latest prices.
     """
-    user_id = await get_or_create_default_user_id()
+    try:
+        user_id = await resolve_effective_user_id()
+    except PermissionError as e:
+        return {"status": "error", "error": "unauthorized", "message": str(e)}
 
     async with async_session_factory() as session:
         try:
@@ -320,7 +346,10 @@ async def list_trackers(status: str | None = None) -> dict[str, Any]:
     Returns:
         List of trackers with product title, status, expiration, and tracked offers count.
     """
-    user_id = await get_or_create_default_user_id()
+    try:
+        user_id = await resolve_effective_user_id()
+    except PermissionError as e:
+        return {"status": "error", "error": "unauthorized", "message": str(e)}
 
     async with async_session_factory() as session:
         try:
